@@ -2,10 +2,13 @@ import json
 
 from flask import Blueprint, render_template, jsonify, request
 from flask_babel import gettext
+from sqlalchemy import and_
 
 from base.models import Msg
+from base.models import User
 from init import db
-from util import config, server_info
+from util import config, server_info, v2_util
+from util.v2_jobs import v2_config_change
 from v2ray.models import Inbound
 
 v2ray_bp = Blueprint('v2ray', __name__, url_prefix='/v2ray')
@@ -25,7 +28,10 @@ def accounts():
     from init import common_context
     inbs = Inbound.query.all()
     inbs = '[' + ','.join([json.dumps(inb.to_json(), ensure_ascii=False) for inb in inbs]) + ']'
-    return render_template('v2ray/accounts.html', **common_context, inbounds=inbs)
+    user = User.query.first()
+    has_changed = user.username != 'admin' or user.password != 'admin'
+    return render_template('v2ray/accounts.html', **common_context,
+                           inbounds=inbs, has_changed=has_changed)
 
 
 @v2ray_bp.route('/clients/', methods=['GET'])
@@ -39,7 +45,20 @@ def setting():
     from init import common_context
     settings = config.all_settings()
     settings = '[' + ','.join([json.dumps(s.to_json(), ensure_ascii=False) for s in settings]) + ']'
-    return render_template('v2ray/setting.html', **common_context, settings=settings)
+    return render_template('v2ray/setting.html', **common_context, settings=settings,
+                           v2ray_version=v2_util.get_v2ray_version())
+
+
+@v2ray_bp.route('/tutorial/', methods=['GET'])
+def tutorial():
+    from init import common_context
+    return render_template('v2ray/tutorial.html', **common_context)
+
+
+@v2ray_bp.route('/donate/', methods=['GET'])
+def donate():
+    from init import common_context
+    return render_template('v2ray/donate.html', **common_context)
 
 
 @v2ray_bp.route('/inbounds', methods=['GET'])
@@ -48,6 +67,7 @@ def inbounds():
 
 
 @v2ray_bp.route('inbound/add', methods=['POST'])
+@v2_config_change
 def add_inbound():
     port = int(request.form['port'])
     if Inbound.query.filter_by(port=port).count() > 0:
@@ -69,11 +89,14 @@ def add_inbound():
 
 
 @v2ray_bp.route('inbound/update/<int:in_id>', methods=['POST'])
+@v2_config_change
 def update_inbound(in_id):
     update = {}
     port = request.form.get('port')
     add_if_not_none(update, 'port', port)
     if port:
+        if Inbound.query.filter(and_(Inbound.id != in_id, Inbound.port == port)).count() > 0:
+            return jsonify(Msg(False, gettext('port exists')))
         add_if_not_none(update, 'tag', 'inbound-' + port)
     add_if_not_none(update, 'listen', request.form.get('listen'))
     add_if_not_none(update, 'protocol', request.form.get('protocol'))
@@ -92,6 +115,7 @@ def update_inbound(in_id):
 
 
 @v2ray_bp.route('inbound/del/<int:in_id>', methods=['POST'])
+@v2_config_change
 def del_inbound(in_id):
     Inbound.query.filter_by(id=in_id).delete()
     db.session.commit()

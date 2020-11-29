@@ -1,8 +1,5 @@
 [中文](README.md) | English
 
-# Donate
-If you think the panel is easy to use, you can consider donation support, the amount is arbitrary, thank you for your support. [PayPal](https://blog.sprov.xyz/go/support-paypal)
-
 # v2-ui
 Support multi-protocol multi-user v2ray panel
 
@@ -98,8 +95,6 @@ You can modify the [Account Effective Time] in the panel settings, **It is not a
 ## Vmess cannot be connected due to time error
 Refer to v2ray official sentence:
 >VMess depends on system time. Please ensure that your system time is in sync with UTC time. Timezone doesn't matter. One may install ntp service on Linux to automatically adjust system time.
-
-So don't think about modifying the time zone. Because if the method of modifying the time zone is wrong, the panel will not start.
 
 # Telegram
 群组：https://t.me/sprov_blog
